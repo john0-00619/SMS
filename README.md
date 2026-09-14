@@ -58,7 +58,12 @@ Open `http://localhost:8080` in a browser. On mobile, tap/visit the live preview
   plus per-world ambient soundscapes (wind, birds, waves, rain, thunder, temple
   chimes) and a rich SFX bank (coin-combo pitch, verse chimes, level-up fanfare,
   game-over sting, footsteps, landings, near-miss whooshes, milestone fanfares,
-  star "praise" swells) with optional haptic vibration feedback.
+  star "praise" swells) with optional haptic vibration feedback. A synthesized
+  **ram's-horn shofar** sounds the call to run, level-ups and revives; a
+  **danger heartbeat** quickens as obstacles approach; each character has their
+  own lead-instrument motif (harp for David, shofar for Moses, flute for Esther,
+  bells for Mary, organ for Paul, etc.), and new records trigger a grand
+  "Hallelujah" choir-and-bells celebration.
 
 ---
 

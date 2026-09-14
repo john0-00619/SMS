@@ -127,6 +127,7 @@ async function main() {
     game.audio.amen(); game.audio.wings(); game.audio.shieldUp(); game.audio.gameOver();
     game.audio.footstep(); game.audio.land(); game.audio.nearMiss();
     game.audio.milestone(); game.audio.goSting(); game.audio.praise();
+    game.audio.shofar(2); game.audio.heartbeat(); game.audio.hallelujah();
   } catch (e) { audioOk = false; }
   check('audio methods no-throw', audioOk);
 
@@ -141,6 +142,12 @@ async function main() {
   check('sfx mute sets volume to 0', game.audio.sfxVolume === 0);
   game.toggleSfxMute();
   check('sfx unmute restores volume', game.audio.sfxVolume === sfxBefore || game.audio.sfxVolume === 0.9);
+
+  // ---- character lead instrument follows selection ----
+  store.profile.xp = 10000;
+  store.profile.coins = 10000;
+  game.unlockCharacter('moses'); // selects moses (shofar lead)
+  check('lead instrument follows character', game.audio.music.lead === 'shofar', `lead=${game.audio.music.lead}`);
 
   // ---- save/load round trip ----
   store.save();

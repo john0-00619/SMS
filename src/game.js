@@ -110,6 +110,7 @@ export class Game {
     const outfit = OUTFITS.find((o) => o.id === this.store.selected.outfit);
     const colors = { ...charDef.colors, ...(outfit && outfit.tint ? outfit.tint : {}) };
     const scheme = { ...charDef, colors };
+    this.audio.setLead(charDef.sound || 'harp');
     if (this.playerGroup) this.scene.remove(this.playerGroup);
     const built = buildCharacter(scheme);
     this.character = charDef;
@@ -412,7 +413,7 @@ export class Game {
     this.audio.resume();
     this.audio.setMusicContext('run');
     this.audio.startMusic();
-    this.audio.goSting();
+    this.audio.shofar(1);
   }
 
   _resetRun() {
@@ -454,6 +455,7 @@ export class Game {
     this.nextMilestone = 500;
     this.footTimer = 0;
     this.wasAirborne = false;
+    this.heartTimer = 0;
 
     this.player = {
       lane: 1, x: 0, jumpY: 0, vy: 0, onGround: true,
@@ -792,6 +794,9 @@ export class Game {
       this.nextMilestone += 500;
     }
 
+    // danger heartbeat: pulse faster as an obstacle in our lane approaches
+    this._dangerHeartbeat(dt);
+
     // --- move objects ---
     this._moveObstacles(dt);
     this._moveCollectibles(dt);
@@ -832,6 +837,26 @@ export class Game {
     // --- HUD ---
     this._updateHud();
     this._spawnLoop(dt);
+  }
+
+  _dangerHeartbeat(dt) {
+    if (this.flying > 0 || this.invincible > 0 || this.shield) return;
+    const p = this.player;
+    if (!p.onGround) return;
+    // nearest obstacle ahead in the player's lane
+    let nearest = Infinity;
+    for (const o of this.obstacles) {
+      if (!o.active || o.lane !== p.lane) continue;
+      const ahead = o.z - PLAYER_Z;
+      if (ahead > 0 && ahead < nearest) nearest = ahead;
+    }
+    if (nearest > 14 || !isFinite(nearest)) { this.heartTimer = 0; return; }
+    this.heartTimer -= dt;
+    if (this.heartTimer <= 0) {
+      this.audio.heartbeat();
+      // interval tightens from 0.7s (far) down to 0.28s (very close)
+      this.heartTimer = 0.28 + (nearest / 14) * 0.42;
+    }
   }
 
   _moveObstacles(dt) {
@@ -1061,7 +1086,7 @@ export class Game {
     this.ui.showHud(false);
 
     // end-of-run sting
-    if (this.lastWasRecord) { this.audio.newRecord(); this._vibrate([30, 30, 30, 30, 80]); }
+    if (this.lastWasRecord) { this.audio.hallelujah(); this._vibrate([30, 30, 30, 30, 80]); }
     else if (crashed) this.audio.gameOver();
     else this.audio.victory();
 
@@ -1087,6 +1112,7 @@ export class Game {
       this._gameOverStats = stats;
       this.state = 'levelup';
       this.audio.levelUp();
+      this.audio.shofar(2);
       this._vibrate([40, 40, 40, 40, 120]);
       this.ui.renderLevelUp(name);
       return;
@@ -1269,6 +1295,7 @@ export class Game {
     s.save();
     this.run.revived = true;
     this.audio.revive();
+    this.audio.shofar(1);
     // clear nearby obstacles and give shield + brief invincibility
     for (const o of this.obstacles) {
       if (o.active && o.z < 25 && o.z > -8) { o.active = false; o.obj.visible = false; }

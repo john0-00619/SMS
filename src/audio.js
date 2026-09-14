@@ -29,6 +29,7 @@ export class AudioEngine {
       intensity: 0,     // 0..1 (drives energy while running)
       step: 0,
       nextNoteTime: 0,
+      lead: 'harp',     // per-character lead instrument
     };
 
     // ambience state
@@ -175,6 +176,10 @@ export class AudioEngine {
     this.music.intensity = Math.max(0, Math.min(1, intensity || 0));
   }
 
+  setLead(instrument) {
+    this.music.lead = instrument || 'harp';
+  }
+
   startMusic() {
     this.ensure();
     if (!this.ctx || this.musicPlaying) return;
@@ -256,11 +261,37 @@ export class AudioEngine {
     if (beat === 2) this._hat(t, 0.012);
     // shimmer sparkle when intensity is high
     if (inten > 0.65 && beat === 3) this._tone(chord[2] * 4, 'sine', 0.012, t, 0.5, this.musicGain);
-    // "Amen" plagal sparkle every 4 bars (F -> C)
-    if (bar % 4 === 3 && beat === 0) {
-      this._choirVoice(174.61, t, 1.6, 0.02);
+    // per-character lead motif at the start of every other bar
+    if (beat === 0 && bar % 2 === 1) this._leadMotif(t);
+    // call-and-response choir "Amen" (IV -> I) every 8 bars
+    if (bar % 8 === 7 && beat === 0) {
+      this._choirVoice(174.61, t, 1.4, 0.02);
+      this._choirVoice(220.0, t, 1.4, 0.016);
       this._tone(261.63, 'sine', 0.03, t + 0.4, 1.2, this.musicGain);
     }
+  }
+
+  // A short melodic motif on the current character's lead instrument, layered
+  // over the run music so each hero sounds distinct.
+  _leadMotif(t) {
+    const root = 261.63; // C4
+    const lead = this.music.lead || 'harp';
+    const patterns = {
+      harp: [0, 4, 7, 12, 7, 4],
+      flute: [0, 2, 4, 7, 9, 7],
+      shofar: [0, 7],
+      strings: [0, 4, 7],
+      organ: [0, 7, 12],
+      bells: [12, 7, 4, 0],
+    };
+    const types = { harp: 'triangle', flute: 'sine', shofar: 'sawtooth', strings: 'triangle', organ: 'triangle', bells: 'sine' };
+    const semis = patterns[lead] || patterns.harp;
+    const type = types[lead] || 'triangle';
+    semis.forEach((s, i) => {
+      const f = root * Math.pow(2, s / 12);
+      if (lead === 'shofar') this._brass(f * 0.5, t + i * 0.22, 0.3, 0.05, this.musicGain);
+      else this._tone(f, type, 0.035, t + i * 0.09, lead === 'organ' ? 0.5 : 0.25, this.musicGain);
+    });
   }
 
   _kick(t, gain) {
@@ -592,6 +623,65 @@ export class AudioEngine {
     const t = this.ctx.currentTime;
     [261.63, 329.63, 392.0].forEach((f) => this._choirVoice(f, t, 1.2, 0.035, this.sfxGain));
     this._tone(1046.5, 'sine', 0.05, t + 0.2, 0.6, this.sfxGain);
+  }
+
+  // A brass-like voice (sawtooth + detune + vibrato + filter falloff) used for
+  // the ram's-horn "shofar" — the signature biblical call.
+  _brass(freq, t, dur, gain, dest) {
+    if (!this.ctx) return;
+    const o1 = this.ctx.createOscillator(); o1.type = 'sawtooth';
+    const o2 = this.ctx.createOscillator(); o2.type = 'sawtooth';
+    o1.frequency.setValueAtTime(freq * 1.06, t);
+    o1.frequency.exponentialRampToValueAtTime(freq, t + 0.12);
+    o2.frequency.setValueAtTime(freq * 1.06, t);
+    o2.frequency.exponentialRampToValueAtTime(freq, t + 0.12);
+    o2.detune.value = 9;
+    const filt = this.ctx.createBiquadFilter(); filt.type = 'lowpass';
+    filt.frequency.setValueAtTime(2400, t);
+    filt.frequency.exponentialRampToValueAtTime(900, t + dur);
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 5.2;
+    const lg = this.ctx.createGain(); lg.gain.value = 5;
+    lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.08);
+    g.gain.setValueAtTime(gain, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o1.connect(filt); o2.connect(filt); filt.connect(g); g.connect(dest || this.sfxGain);
+    o1.start(t); o2.start(t); lfo.start(t);
+    o1.stop(t + dur + 0.05); o2.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+  }
+
+  shofar(blasts = 1) {
+    // the ram's-horn call: long "tekiah" blast(s), plus a staccato "teruah"
+    // flurry on the big two-blast moments.
+    this.resume();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const base = 185;
+    for (let i = 0; i < blasts; i++) this._brass(base, t + i * 0.55, 0.5, 0.16);
+    if (blasts >= 2) {
+      for (let i = 0; i < 5; i++) this._brass(base * 1.12, t + 1.1 + i * 0.12, 0.1, 0.09);
+    }
+  }
+
+  heartbeat() {
+    // low lub-dub pulse — builds tension as danger approaches
+    this.resume();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this._tone(56, 'sine', 0.15, t, 0.11, this.sfxGain, 38);
+    this._tone(50, 'sine', 0.11, t + 0.16, 0.11, this.sfxGain, 34);
+  }
+
+  hallelujah() {
+    // grand gospel swell: choir chord + bells + shofar — for new records
+    this.resume();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [261.63, 329.63, 392.0, 523.25].forEach((f) => this._choirVoice(f, t, 2.4, 0.04, this.sfxGain));
+    [1046.5, 1318.5, 1568.0].forEach((f, i) => this._tone(f, 'sine', 0.06, t + i * 0.12, 1.2, this.sfxGain));
+    this._brass(185, t + 0.2, 0.5, 0.12);
   }
 }
 
