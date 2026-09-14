@@ -432,13 +432,20 @@ export class UI {
   // PAUSE
   // -------------------------------------------------------------------------
   renderPause() {
+    const a = this.game.audio;
     this._screen('pause', `
       <div class="panel-title">⏸ Paused</div>
       <button class="btn btn-primary" data-resume>▶ Resume</button>
+      <div class="pause-row">
+        <button class="btn btn-mini" data-music-mute>${a.musicVolume > 0 ? '🎵 Music: On' : '🔇 Music: Off'}</button>
+        <button class="btn btn-mini" data-sfx-mute>${a.sfxVolume > 0 ? '🔊 SFX: On' : '🔇 SFX: Off'}</button>
+      </div>
       <button class="btn" data-quit>🏠 Home</button>
     `);
     document.querySelector('[data-resume]').addEventListener('click', () => this.game.resume());
     document.querySelector('[data-quit]').addEventListener('click', () => this.game.toHome());
+    document.querySelector('[data-music-mute]').addEventListener('click', () => this.game.toggleMusicMute());
+    document.querySelector('[data-sfx-mute]').addEventListener('click', () => this.game.toggleSfxMute());
   }
 
   // -------------------------------------------------------------------------
@@ -728,6 +735,9 @@ canvas { display: block; position: fixed; inset: 0; touch-action: none; }
 .slider:before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
 .switch input:checked + .slider { background: var(--gold-dark); }
 .switch input:checked + .slider:before { transform: translateX(22px); }
+
+/* ---- Pause ---- */
+.pause-row { display: flex; gap: 10px; margin: 8px 0; justify-content: center; }
 
 /* ---- Game over ---- */
 .gameover-score { font-size: 60px; font-weight: 900; color: var(--gold); text-shadow: 0 2px 12px rgba(232,193,90,0.5); }

@@ -66,6 +66,8 @@ export class Game {
     this.lastWasRecord = false;
     this.newVerseQueued = null;
     this.pendingLevelUp = null;
+    this._preMusicVolume = null;
+    this._preSfxVolume = null;
     this.lastTime = performance.now();
     this._loop = this._loop.bind(this);
     requestAnimationFrame(this._loop);
@@ -203,6 +205,7 @@ export class Game {
   }
 
   _setObstacle(o, type, lane, z) {
+    o.passed = false;
     if (o.type !== type) {
       // rebuild children
       while (o.obj.children.length) o.obj.remove(o.obj.children[0]);
@@ -409,6 +412,7 @@ export class Game {
     this.audio.resume();
     this.audio.setMusicContext('run');
     this.audio.startMusic();
+    this.audio.goSting();
   }
 
   _resetRun() {
@@ -447,6 +451,9 @@ export class Game {
     this._multTimer = null;
     this._faithTimer = null;
     this.lastWasRecord = false;
+    this.nextMilestone = 500;
+    this.footTimer = 0;
+    this.wasAirborne = false;
 
     this.player = {
       lane: 1, x: 0, jumpY: 0, vy: 0, onGround: true,
@@ -767,6 +774,24 @@ export class Game {
       p.onGround = false;
     }
 
+    // landing thud + footsteps
+    if (this.wasAirborne && p.onGround) this.audio.land();
+    this.wasAirborne = !p.onGround;
+    if (p.onGround && !p.sliding) {
+      this.footTimer -= dt;
+      if (this.footTimer <= 0) {
+        this.audio.footstep();
+        this.footTimer = Math.max(0.16, 0.34 - this.speed * 0.004);
+      }
+    }
+
+    // distance milestone fanfare
+    if (run.distance >= this.nextMilestone) {
+      this.audio.milestone();
+      this.ui.toast(`⛰️ ${this.nextMilestone}m — keep the faith!`);
+      this.nextMilestone += 500;
+    }
+
     // --- move objects ---
     this._moveObstacles(dt);
     this._moveCollectibles(dt);
@@ -814,6 +839,11 @@ export class Game {
       if (!o.active) continue;
       o.z += this.speed * dt;
       o.obj.position.z = o.z;
+      // near-miss whoosh when an obstacle in our lane passes us safely
+      if (!o.passed && o.z > PLAYER_Z + 0.25) {
+        o.passed = true;
+        if (o.lane === this.player.lane) this.audio.nearMiss();
+      }
       if (o.z > RECYCLE_Z) { o.active = false; o.obj.visible = false; }
     }
   }
@@ -938,6 +968,7 @@ export class Game {
     }
     this.renderer.setCameraShake(0.9);
     this.audio.crash();
+    this._vibrate([60, 30, 60, 30, 120]);
     this._burstAt(this.player.x, 1.2, PLAYER_Z, 'rgba(255,140,80,0.95)', 18);
     this._endRun(true);
   }
@@ -966,6 +997,7 @@ export class Game {
         run.coins += val;
         this.runStats.coins += val;
         this.audio.coin();
+        this._vibrate(10);
         this._burstAt(pos.x, pos.y, pos.z, 'rgba(255,210,90,0.9)', 5);
         break;
       }
@@ -990,6 +1022,8 @@ export class Game {
         this.runStats.stars += STAR_VALUE;
         this.store.stats.starsCollected++;
         this.audio.star();
+        this.audio.praise();
+        this._vibrate([20, 30, 20]);
         this._burstAt(pos.x, pos.y, pos.z, 'rgba(255,240,160,0.95)', 10);
         break;
       }
@@ -1027,7 +1061,7 @@ export class Game {
     this.ui.showHud(false);
 
     // end-of-run sting
-    if (this.lastWasRecord) this.audio.newRecord();
+    if (this.lastWasRecord) { this.audio.newRecord(); this._vibrate([30, 30, 30, 30, 80]); }
     else if (crashed) this.audio.gameOver();
     else this.audio.victory();
 
@@ -1053,6 +1087,7 @@ export class Game {
       this._gameOverStats = stats;
       this.state = 'levelup';
       this.audio.levelUp();
+      this._vibrate([40, 40, 40, 40, 120]);
       this.ui.renderLevelUp(name);
       return;
     }
@@ -1386,6 +1421,42 @@ export class Game {
   resetTutorial() {
     this.store.resetTutorial();
     this.ui.toast('Tutorial reset');
+  }
+
+  _vibrate(pattern) {
+    if (this.store.settings.vibration && typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(pattern); } catch (e) { /* not supported */ }
+    }
+  }
+
+  toggleMusicMute() {
+    const a = this.audio;
+    if (a.musicVolume > 0) {
+      this._preMusicVolume = a.musicVolume;
+      a.setMusicVolume(0);
+      this.store.settings.music = 0;
+    } else {
+      const v = this._preMusicVolume || 0.7;
+      a.setMusicVolume(v);
+      this.store.settings.music = v;
+    }
+    this.store.save();
+    this.ui.renderPause();
+  }
+
+  toggleSfxMute() {
+    const a = this.audio;
+    if (a.sfxVolume > 0) {
+      this._preSfxVolume = a.sfxVolume;
+      a.setSfxVolume(0);
+      this.store.settings.sfx = 0;
+    } else {
+      const v = this._preSfxVolume || 0.9;
+      a.setSfxVolume(v);
+      this.store.settings.sfx = v;
+    }
+    this.store.save();
+    this.ui.renderPause();
   }
 
   // -------------------------------------------------------------------------

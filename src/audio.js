@@ -60,7 +60,7 @@ export class AudioEngine {
     this.sfxGain.gain.value = this.sfxVolume;
     this.sfxGain.connect(this.masterGain);
     this.ambGain = this.ctx.createGain();
-    this.ambGain.gain.value = 0.5;
+    this.ambGain.gain.value = 0.5 * this.musicVolume;
     this.ambGain.connect(this.masterGain);
   }
 
@@ -72,6 +72,8 @@ export class AudioEngine {
   setMusicVolume(v) {
     this.musicVolume = v;
     if (this.musicGain) this.musicGain.gain.value = v;
+    // ambience rides along with the music slider (it is part of the soundtrack)
+    if (this.ambGain) this.ambGain.gain.value = 0.5 * v;
   }
   setSfxVolume(v) {
     this.sfxVolume = v;
@@ -550,6 +552,46 @@ export class AudioEngine {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     [392, 523, 659, 784, 1046].forEach((f, i) => this._tone(f, 'triangle', 0.14, t + i * 0.06, 0.2));
+  }
+
+  // --- "alive" movement & moment sounds ------------------------------------
+  footstep() {
+    this.resume();
+    if (!this.ctx) return;
+    const f = this._footSide ? 96 : 108; // alternate left/right
+    this._footSide = !this._footSide;
+    this._tone(f, 'sine', 0.05, null, 0.06, this.sfxGain, f * 0.5);
+    this._noise(0.04, 0.018, null, 'lowpass', 420);
+  }
+  land() {
+    this.resume();
+    this._noise(0.1, 0.08, null, 'lowpass', 600);
+    this._tone(120, 'sine', 0.06, null, 0.1, this.sfxGain, 60);
+  }
+  nearMiss() {
+    // airy whoosh when you clear an obstacle in your own lane
+    this.resume();
+    this._noise(0.18, 0.09, null, 'bandpass', 1500);
+    this._tone(600, 'sine', 0.04, null, 0.15, this.sfxGain, 1500);
+  }
+  milestone() {
+    this.resume();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [659.25, 783.99, 987.77, 1318.51].forEach((f, i) => this._tone(f, 'sine', 0.09, t + i * 0.08, 0.3));
+  }
+  goSting() {
+    // rising "Go!" blip at run start
+    this.resume();
+    this._tone(440, 'sine', 0.1, null, 0.16, this.sfxGain, 880);
+  }
+  praise() {
+    // short choir swell for a star (a rare, precious collectible)
+    this.resume();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [261.63, 329.63, 392.0].forEach((f) => this._choirVoice(f, t, 1.2, 0.035, this.sfxGain));
+    this._tone(1046.5, 'sine', 0.05, t + 0.2, 0.6, this.sfxGain);
   }
 }
 

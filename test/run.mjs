@@ -125,8 +125,22 @@ async function main() {
     game.audio.setAmbience('desert');
     game.audio.verse(); game.audio.newRecord(); game.audio.levelUp();
     game.audio.amen(); game.audio.wings(); game.audio.shieldUp(); game.audio.gameOver();
+    game.audio.footstep(); game.audio.land(); game.audio.nearMiss();
+    game.audio.milestone(); game.audio.goSting(); game.audio.praise();
   } catch (e) { audioOk = false; }
   check('audio methods no-throw', audioOk);
+
+  // ---- mute toggles reflect in the engine ----
+  const volBefore = game.audio.musicVolume;
+  game.toggleMusicMute();
+  check('music mute sets volume to 0', game.audio.musicVolume === 0);
+  game.toggleMusicMute();
+  check('music unmute restores volume', game.audio.musicVolume === volBefore || game.audio.musicVolume === 0.7);
+  const sfxBefore = game.audio.sfxVolume;
+  game.toggleSfxMute();
+  check('sfx mute sets volume to 0', game.audio.sfxVolume === 0);
+  game.toggleSfxMute();
+  check('sfx unmute restores volume', game.audio.sfxVolume === sfxBefore || game.audio.sfxVolume === 0.9);
 
   // ---- save/load round trip ----
   store.save();

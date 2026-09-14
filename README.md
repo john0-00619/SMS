@@ -52,11 +52,13 @@ Open `http://localhost:8080` in a browser. On mobile, tap/visit the live preview
   points, character upgrades, cosmetic outfits.
 - **Save system** via `localStorage` (structured for future cloud sync), plus
   settings for music/SFX volume, vibration, graphics quality and language.
-- **First-run tutorial**, pause, revive, and a fully synthesized soundtrack —
-  calm menu theme, an energetic run theme that builds with speed, a gospel-style
-  "choir" pad, and an "Amen" plagal cadence — plus a rich SFX bank (coin-combo
-  pitch, verse chimes, level-up fanfare, game-over sting) and per-world ambient
-  soundscapes (wind, birds, waves, rain, thunder, temple chimes).
+- **First-run tutorial**, pause (with quick music/SFX mute toggles), revive, and
+  a fully synthesized soundtrack — calm menu theme, an energetic run theme that
+  builds with speed, a gospel-style "choir" pad, and an "Amen" plagal cadence —
+  plus per-world ambient soundscapes (wind, birds, waves, rain, thunder, temple
+  chimes) and a rich SFX bank (coin-combo pitch, verse chimes, level-up fanfare,
+  game-over sting, footsteps, landings, near-miss whooshes, milestone fanfares,
+  star "praise" swells) with optional haptic vibration feedback.
 
 ---
 
