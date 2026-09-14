@@ -3,7 +3,7 @@
 // ============================================================================
 import {
   GAME, CHARACTERS, WORLDS, MISSIONS, POWERUPS, VERSES, QUIZ,
-  DAILY_REWARDS, DAILY_CHALLENGES, OUTFITS, levelForXp,
+  DAILY_REWARDS, DAILY_CHALLENGES, OUTFITS, LEVELS, levelForXp,
 } from './data.js';
 import { store } from './save.js';
 import { audio } from './audio.js';
@@ -65,11 +65,13 @@ export class Game {
     this._faithTimer = null;
     this.lastWasRecord = false;
     this.newVerseQueued = null;
+    this.pendingLevelUp = null;
     this.lastTime = performance.now();
     this._loop = this._loop.bind(this);
     requestAnimationFrame(this._loop);
 
     // build initial menu backdrop scene
+    this.audio.setMusicContext('menu');
     this.applyWorld(WORLDS[0]);
     this.applyCharacter(CHARACTERS[0]);
 
@@ -84,6 +86,7 @@ export class Game {
   applyWorld(world) {
     this.world = world;
     this.renderer.applyWorld(world);
+    this.audio.setAmbience(world.ambience);
     // rebuild decor pool
     this.decor.forEach((d) => this.scene.remove(d));
     const fresh = buildDecorPool(world);
@@ -380,6 +383,7 @@ export class Game {
   toHome() {
     if (this.quizQueued) { this._showQuiz('home'); return; }
     this.state = 'menu';
+    this.audio.setMusicContext('menu');
     this.audio.startMusic();
     this.ui.hideScreens();
     this.ui.showHud(false);
@@ -403,6 +407,7 @@ export class Game {
     this.ui.showHud(true);
     this.ui.renderHome(); // refresh currencies on home for later
     this.audio.resume();
+    this.audio.setMusicContext('run');
     this.audio.startMusic();
   }
 
@@ -473,6 +478,7 @@ export class Game {
   pause() {
     if (this.state !== 'running') return;
     this.state = 'paused';
+    this.audio.stopMusic();
     this.ui.renderPause();
   }
 
@@ -481,6 +487,8 @@ export class Game {
     this.state = 'running';
     this.ui.hideScreens();
     this.ui.showHud(true);
+    this.audio.resume();
+    this.audio.startMusic();
   }
 
   togglePause() {
@@ -503,6 +511,7 @@ export class Game {
     this.runStats.powerups++;
     this.store.stats.powerupsUsed++;
     this.audio.powerup();
+    if (ab.type === 'shield' || ab.type === 'clear' || ab.type === 'light') this.audio.shieldUp();
     const d = ab.duration;
     switch (ab.type) {
       case 'speed': this.speedBoost = d; break;
@@ -540,6 +549,8 @@ export class Game {
       default: break;
     }
     this.audio.powerup();
+    if (pu.type === 'wings') this.audio.wings();
+    if (pu.type === 'shield') this.audio.shieldUp();
     this._addActivePill(pu);
   }
 
@@ -780,6 +791,7 @@ export class Game {
     );
     this.runStats.score = run.score;
     this.runStats.crashed = false;
+    this.audio.pulseMusic(this.speed / MAX_SPEED);
 
     // live mission progress (no_crash at 400m, score, distance)
     this._liveMissionProgress();
@@ -999,6 +1011,7 @@ export class Game {
         s.unlocks.verses.push(idx);
         s.unlocks.verses.sort((a, b) => a - b);
         this.newVerseQueued = VERSES[idx];
+        this.audio.verse();
       }
     }
   }
@@ -1013,12 +1026,17 @@ export class Game {
     this.state = 'gameover';
     this.ui.showHud(false);
 
+    // end-of-run sting
+    if (this.lastWasRecord) this.audio.newRecord();
+    else if (crashed) this.audio.gameOver();
+    else this.audio.victory();
+
     // queue quiz occasionally
     const lvl = levelForXp(this.store.profile.xp);
     const eligible = lvl.index >= 1 && (this.store.profile.totalRuns - this.lastQuizRun) >= 2;
     this.quizQueued = eligible && Math.random() < 0.5;
 
-    this.ui.renderGameOver({
+    const stats = {
       distance: this.run.distance,
       score: this.run.score,
       coins: this.run.coins,
@@ -1026,13 +1044,26 @@ export class Game {
       faith: this.run.faith,
       newRecord: this.lastWasRecord,
       revived: this.run.revived,
-    });
+    };
+
+    // level-up celebration takes precedence over the game-over screen
+    if (this.pendingLevelUp) {
+      const name = this.pendingLevelUp.name;
+      this.pendingLevelUp = null;
+      this._gameOverStats = stats;
+      this.state = 'levelup';
+      this.audio.levelUp();
+      this.ui.renderLevelUp(name);
+      return;
+    }
+    this.ui.renderGameOver(stats);
   }
 
   _applyRunToProgress() {
     const s = this.store;
     const run = this.run;
     const rs = this.runStats;
+    const levelBefore = levelForXp(s.profile.xp).index;
     // currencies & xp (coins/faith also added here as run rewards)
     const xp = Math.floor(run.distance / 10) + run.coins + run.scrolls * 3 + run.stars * 10;
     s.addCoins(run.coins);
@@ -1106,6 +1137,12 @@ export class Game {
       ch.level++;
     }
 
+    // player level-up detection
+    const levelAfter = levelForXp(s.profile.xp).index;
+    if (levelAfter > levelBefore) {
+      this.pendingLevelUp = { index: levelAfter, name: LEVELS[levelAfter].name };
+    }
+
     s.save();
   }
 
@@ -1161,6 +1198,15 @@ export class Game {
   continueAfterQuiz() {
     if (this.afterQuiz === 'run') this.startRun();
     else this.toHome();
+  }
+
+  continueAfterLevelUp() {
+    this.state = 'gameover';
+    this.ui.showHud(false);
+    this.ui.renderGameOver(this._gameOverStats || {
+      distance: 0, score: 0, coins: 0, scrolls: 0, faith: 0,
+      newRecord: false, revived: false,
+    });
   }
 
   // -------------------------------------------------------------------------

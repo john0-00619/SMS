@@ -108,6 +108,26 @@ async function main() {
   game.unlockCharacter('esther'); // requires level 3
   check('level gate blocks under-leveled unlock', !store.unlocks.characters.includes('esther'));
 
+  // ---- level-up flow ----
+  store.profile.xp = 295; // just below Disciple (300)
+  game.startRun();
+  game.run.distance = 200; game.run.coins = 30; game.run.scrolls = 2; game.run.stars = 1;
+  game.runStats.distance = 200; game.runStats.coins = 30; game.runStats.scrolls = 2; game.runStats.stars = 1;
+  game._endRun(false);
+  check('level-up screen shows on rank-up', game.state === 'levelup', `state=${game.state}`);
+  game.continueAfterLevelUp();
+  check('continueAfterLevelUp returns to gameover', game.state === 'gameover');
+
+  // ---- audio methods are no-op-safe without an AudioContext ----
+  let audioOk = true;
+  try {
+    game.audio.pulseMusic(0.7);
+    game.audio.setAmbience('desert');
+    game.audio.verse(); game.audio.newRecord(); game.audio.levelUp();
+    game.audio.amen(); game.audio.wings(); game.audio.shieldUp(); game.audio.gameOver();
+  } catch (e) { audioOk = false; }
+  check('audio methods no-throw', audioOk);
+
   // ---- save/load round trip ----
   store.save();
   const raw = localStorage.getItem('path_of_faith_save_v1');

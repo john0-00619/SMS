@@ -145,6 +145,7 @@ export const WORLDS = [
       accent: 0xd9b98a, accent2: 0x8a6a4a, water: 0x3a6a8a,
     },
     groundKind: 'stone',
+    ambience: 'temple',
   },
   {
     id: 'desert', name: 'Exodus Desert', chapter: 'The Wilderness',
@@ -157,6 +158,7 @@ export const WORLDS = [
       accent: 0xe0c090, accent2: 0x9a6a40, water: 0x4a8a9a,
     },
     groundKind: 'sand',
+    ambience: 'desert',
   },
   {
     id: 'redsea', name: 'Red Sea', chapter: 'The Parted Waters',
@@ -169,6 +171,7 @@ export const WORLDS = [
       accent: 0x5aa0c0, accent2: 0x2a6080, water: 0x2a6080,
     },
     groundKind: 'seabed',
+    ambience: 'sea',
   },
   {
     id: 'davidskingdom', name: 'David’s Kingdom', chapter: 'The Royal Valley',
@@ -181,6 +184,7 @@ export const WORLDS = [
       accent: 0xc0a860, accent2: 0x6a5a3a, water: 0x3a7a8a,
     },
     groundKind: 'village',
+    ambience: 'village',
   },
   {
     id: 'noah', name: 'Noah’s World', chapter: 'The Great Flood',
@@ -193,6 +197,7 @@ export const WORLDS = [
       accent: 0x8a9a4a, accent2: 0x4a5a2a, water: 0x3a5a6a,
     },
     groundKind: 'forest',
+    ambience: 'rain',
   },
   {
     id: 'galilee', name: 'Galilee', chapter: 'The Sea of Galilee',
@@ -205,6 +210,7 @@ export const WORLDS = [
       accent: 0x6aa0b0, accent2: 0x3a6a80, water: 0x3a80a0,
     },
     groundKind: 'field',
+    ambience: 'village',
   },
   {
     id: 'babylon', name: 'Babylon', chapter: 'The Great City',
@@ -217,6 +223,7 @@ export const WORLDS = [
       accent: 0xd8b860, accent2: 0x7a5a8a, water: 0x3a6a8a,
     },
     groundKind: 'palace',
+    ambience: 'palace',
   },
 ];
 
