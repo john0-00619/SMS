@@ -1,0 +1,25 @@
+{
+  "name": "path-of-faith",
+  "version": "1.0.0",
+  "description": "Path of Faith — a Bible-themed 3D endless runner (Three.js, no copyrighted assets).",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/run.mjs"
+  },
+  "keywords": [
+    "game",
+    "endless-runner",
+    "threejs",
+    "bible",
+    "mobile"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}
